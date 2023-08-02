@@ -10,26 +10,25 @@
 )]
 pub mod EfiMemory;
 mod Bitmap;
-use std::convert::TryInto;
 
-static mut freeMemory : u64 = 0;
-static mut reservedMemory : u64 = 0;
-static mut usedMemory : u64 = 0;
+static mut freeMemory : usize = 0;
+static mut reservedMemory : usize = 0;
+static mut usedMemory : usize = 0;
 static mut Initialized : bool = false;
-static mut PageBitmap : *mut Bitmap::Bitmap = std::ptr::null_mut();
+static mut PageBitmap: Bitmap::Bitmap = Bitmap::Bitmap::new_placeholder();
 
 
-pub unsafe fn ReadEFIMemoryMap(mMap: *mut EfiMemory::EFI_MEMORY_DESCRIPTOR, mMapSize: u64, mMapDescSize: u64) {
+pub unsafe fn ReadEFIMemoryMap(mMap: *mut EfiMemory::EFI_MEMORY_DESCRIPTOR, mMapSize: usize, mMapDescSize: usize) {
     if Initialized {return};
     Initialized = true;
 
-    let mut largsetFreeMemSeg: *mut u64 = std::ptr::null_mut();
-    let mut largsetFreeMemSegSize : u64 = 0;
+    let mut largsetFreeMemSeg: *mut std::ffi::c_void = std::ptr::null_mut();
+    let mut largsetFreeMemSegSize : usize = 0;
 
     let mMapEntries = mMapSize / mMapDescSize;
     let mut current = 0;
     while current < mMapEntries {
-        let desc = &*mMap.add(current as usize);
+        let desc = unsafe { &*mMap.add(current * mMapDescSize)};
         if desc.type_ == 7 { // type 7 is EfiConventionalMemory
             if desc.num_pages * 4096 > largsetFreeMemSegSize {
                 largsetFreeMemSeg = desc.phys_addr;
@@ -38,19 +37,18 @@ pub unsafe fn ReadEFIMemoryMap(mMap: *mut EfiMemory::EFI_MEMORY_DESCRIPTOR, mMap
         }
         current += 1;
     }
-    let mut memory_size : u64 = EfiMemory::get_memory_size(mMap, mMapEntries);
+    let mut memory_size : usize = EfiMemory::get_memory_size(mMap, mMapEntries, mMapDescSize);
     freeMemory = memory_size;
     let bitmapSize = memory_size / 4096 / 8 + 1;
 
     // Initialize bitmap
-    InitBitmap(bitmapSize.try_into().unwrap(), largsetFreeMemSeg);
-
+    PageBitmap = Bitmap::Bitmap::new(bitmapSize, largsetFreeMemSeg);
     // lock pages where bitmap is (which is largsetFreeMemSeg)
-    LockPages(largsetFreeMemSeg, ((*PageBitmap).size / 4096 + 1).try_into().unwrap());
+    LockPages(largsetFreeMemSeg, PageBitmap.size / 4096 + 1); // lockPages gets stuck (current suspicion is that get_memory_size fn isn't returning true size of memory)
     // reserve pages of unusable/reserved memory
     current = 0;
     while current < mMapEntries {
-        let desc = &*mMap.add(current as usize);
+        let desc = unsafe { &*mMap.add(current * mMapDescSize)};
         if desc.type_ != 7 { // not EfiConventionalMemory
             ReservePages(desc.phys_addr , desc.num_pages);
         }
@@ -58,101 +56,84 @@ pub unsafe fn ReadEFIMemoryMap(mMap: *mut EfiMemory::EFI_MEMORY_DESCRIPTOR, mMap
 }
 
 // private
-unsafe fn InitBitmap(bitmap_size: usize, buffer_address: *mut u64) { // dose not work
-    // Set the size of the bitmap.
-    (*PageBitmap).size = bitmap_size;
-
-    // Set the buffer address of the bitmap.
-    //(*PageBitmap).buffer = pointer to buffer_address (still don't know how to do)
-
-    // Initialize the bitmap.
-    for i in 0..bitmap_size {
-        (*PageBitmap).buffer[i] = 0;
-    }
-}
-
-unsafe fn UnreservePage(address: *mut u64) {
-    let index = (address as u64) / 4096;
-    if !(*PageBitmap).get(index.try_into().unwrap()){
+unsafe fn UnreservePage(address: *mut std::ffi::c_void) {
+    let index = (address as usize) / 4096;
+    if !PageBitmap.get(index){
         return;
     }
-    if (*PageBitmap).set(index.try_into().unwrap(), false){
+    if PageBitmap.set(index, false){
         freeMemory += 4096;
         reservedMemory -= 4096;
     }
 }
 
-unsafe fn ReservePage(address: *mut u64) {
-    let index = (address as u64) / 4096;
-    if (*PageBitmap).get(index.try_into().unwrap()){
+unsafe fn ReservePage(address: *mut std::ffi::c_void) {
+    let index = (address as usize) / 4096;
+    if PageBitmap.get(index){
         return;
     }
-    if (*PageBitmap).set(index.try_into().unwrap(), true){
+    if PageBitmap.set(index, true){
         freeMemory -= 4096;
         reservedMemory += 4096;
     }
 }
 
-unsafe fn UnreservePages(address: *mut u64, pageCount: u64) {
+unsafe fn UnreservePages(address: *mut std::ffi::c_void, pageCount: usize) {
     for t in 0..pageCount {
-        let pageAddress = (address as u64) + (t * 4096);
-        UnreservePage(pageAddress as *mut u64);
+        UnreservePage(address.add(t * 4096));
     }
 }
 
-unsafe fn ReservePages(address: *mut u64, pageCount: u64) {
+unsafe fn ReservePages(address: *mut std::ffi::c_void, pageCount: usize) {
     for t in 0..pageCount {
-        let pageAddress = (address as u64) + (t * 4096);
-        ReservePage(pageAddress as *mut u64);
+        ReservePage(address.add(t * 4096));
     }
 }
 
 // public
 
-pub unsafe fn FreePage(address: *mut u64) {
-    let index = (address as u64) / 4096;
-    if !(*PageBitmap).get(index.try_into().unwrap()){
+pub unsafe fn FreePage(address: *mut std::ffi::c_void) {
+    let index = (address as usize) / 4096;
+    if !PageBitmap.get(index){
         return;
     }
-    if (*PageBitmap).set(index.try_into().unwrap(), false){
+    if PageBitmap.set(index, false){
         freeMemory += 4096;
         usedMemory -= 4096;
     }
 }
 
-pub unsafe fn LockPage(address: *mut u64) {
-    let index = (address as u64) / 4096;
-    if (*PageBitmap).get(index.try_into().unwrap()){
+pub unsafe fn LockPage(address: *mut std::ffi::c_void) {
+    let index = (address as usize) / 4096;
+    if PageBitmap.get(index){
         return;
     }
-    if (*PageBitmap).set(index.try_into().unwrap(), true){
+    if PageBitmap.set(index, true){
         freeMemory -= 4096;
         usedMemory += 4096;
     }
 }
 
-pub unsafe fn FreePages(address: *mut u64, pageCount: u64) {
+pub unsafe fn FreePages(address: *mut std::ffi::c_void, pageCount: usize) {
     for t in 0..pageCount {
-        let pageAddress = (address as u64) + (t * 4096);
-        FreePage(pageAddress as *mut u64);
+        FreePage(address.add(t * 4096));
     }
 }
 
-pub unsafe fn LockPages(address: *mut u64, pageCount: u64) {
+pub unsafe fn LockPages(address: *mut std::ffi::c_void, pageCount: usize) {
     for t in 0..pageCount {
-        let pageAddress = (address as u64) + (t * 4096);
-        LockPage(pageAddress as *mut u64);
+        LockPage(address.add(t * 4096));
     }
 }
 
-pub unsafe fn GetFreeRAM() -> u64 {
-    return freeMemory;
+pub fn GetFreeRAM() -> usize {
+    return unsafe {freeMemory};
 }
 
-pub unsafe fn GetUsedRAM() -> u64 {
-    return usedMemory;
+pub fn GetUsedRAM() -> usize {
+    return unsafe {usedMemory};
 }
 
-pub unsafe fn GetReservedRAM() -> u64 {
-    return reservedMemory;
+pub fn GetReservedRAM() -> usize {
+    return unsafe {reservedMemory};
 }

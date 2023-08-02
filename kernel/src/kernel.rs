@@ -23,8 +23,8 @@ pub struct BootInfo {
     pub framebuffer: *mut BasicRenderer::Framebuffer,
     pub psf1_Font: *mut BasicRenderer::PSF1_FONT,
     pub mMap: *mut PageFrameAllocator::EfiMemory::EFI_MEMORY_DESCRIPTOR,
-    pub mMapSize: u64,
-    pub mMapDescSize: u64,
+    pub mMapSize: usize,
+    pub mMapDescSize: usize,
 }
 
 
@@ -33,7 +33,7 @@ pub struct BootInfo {
 extern "C" fn _start(bootInfo:*mut BootInfo) {
     // Init libs
     BasicRenderer::BasicRenderer(unsafe {&mut *(*bootInfo).framebuffer}, unsafe {&mut *(*bootInfo).psf1_Font});
-    unsafe {PageFrameAllocator::ReadEFIMemoryMap((*bootInfo).mMap, (*bootInfo).mMapSize, (*bootInfo).mMapDescSize)};
+    // unsafe {PageFrameAllocator::ReadEFIMemoryMap((*bootInfo).mMap, (*bootInfo).mMapSize, (*bootInfo).mMapDescSize)};
 
     // user INFO code:
     BasicRenderer::Clear(0x000000u32); // clean screen
@@ -55,14 +55,31 @@ extern "C" fn _start(bootInfo:*mut BootInfo) {
     BasicRenderer::Colour(0xFFFFFFu32);
     Print(r"To Do:");
     Next();
-    Print(r"1. convert all EfiMemory & Bitmap to use u64 instead of usize to prevent current data loss");
+    Print(r"1. Need to Implement some sort of mem PageManager");
     Next();
-    Print(r"2. Need to Implement some sort of mem PageManager");
-    Next();
-    Print(r"3. IDT I need it so I can do shit with PIT when I make IO lib");
+    Print(r"2. IDT I need it so I can do shit with PIT when I make IO lib");
     Next();
     Next();
-    Print(r"INFO:");
+    Print(r"RAM_INFO:");
+    Next();
+    Print(r"mMapSize: ");
+    Print(&Rstr::usize_to_str(unsafe {(*bootInfo).mMapSize}));
+    Next();
+    Print(r"mMapDescSize: ");
+    Print(&Rstr::usize_to_str(unsafe {(*bootInfo).mMapDescSize}));
+    Next();
+    unsafe {PageFrameAllocator::ReadEFIMemoryMap((*bootInfo).mMap, (*bootInfo).mMapSize, (*bootInfo).mMapDescSize)};
+    Print(r"FreeRAM: ");
+    Print(&Rstr::usize_to_str(PageFrameAllocator::GetFreeRAM()));
+    Print(r" Bits");
+    Next();
+    Print(r"UsedRAM: ");
+    Print(&Rstr::usize_to_str(PageFrameAllocator::GetUsedRAM()));
+    Print(r" Bits");
+    Next();
+    Print(r"ReservedRAM: ");
+    Print(&Rstr::usize_to_str(PageFrameAllocator::GetReservedRAM()));
+    Print(r" Bits");
     Next();
     loop {
 

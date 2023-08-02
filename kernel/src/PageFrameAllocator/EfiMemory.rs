@@ -12,9 +12,9 @@
 pub struct EFI_MEMORY_DESCRIPTOR {
     // EfiMemory Decriptor of Memory Entries
     pub r#type_: std::ffi::c_uint,
-    pub phys_addr: *mut u64,
-    pub virt_addr: *mut u64,
-    pub num_pages: std::ffi::c_ulonglong,
+    pub phys_addr: *mut std::ffi::c_void,
+    pub virt_addr: *mut std::ffi::c_void,
+    pub num_pages: usize,
     pub attribs: std::ffi::c_ulonglong,
 }
 
@@ -37,19 +37,18 @@ pub const EFI_MEMORY_TYPE_STRINGS: [&str; 14] = [
 ];
 
 // EfiMemory
-pub fn get_memory_size(
+pub fn get_memory_size( // gets stuck in for loop
     // gets total size of memory
-    mMap: *const EFI_MEMORY_DESCRIPTOR,
-    mMapEntries: u64,
-) -> u64 {
+    mMap: *mut EFI_MEMORY_DESCRIPTOR,
+    mMapEntries: usize,
+    mMapDescSize : usize,
+) -> usize {
     let mut memory_size = 0;
 
-    let mut current = 0;
+    let mut current : usize = 0;
     while current < mMapEntries {
-        let desc = unsafe { &*mMap.add(current as usize) };
-        if desc.type_ != 0 {
-            memory_size += desc.num_pages * 4096;
-        }
+        let desc = unsafe { &*mMap.add(current * mMapDescSize)};
+        memory_size += desc.num_pages * 4096;
         current += 1;
     }
 
