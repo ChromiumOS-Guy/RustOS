@@ -33,7 +33,7 @@ pub struct BootInfo {
 extern "C" fn _start(bootInfo:*mut BootInfo) {
     // Init libs
     BasicRenderer::BasicRenderer(unsafe {&mut *(*bootInfo).framebuffer}, unsafe {&mut *(*bootInfo).psf1_Font});
-    // unsafe {PageFrameAllocator::ReadEFIMemoryMap((*bootInfo).mMap, (*bootInfo).mMapSize, (*bootInfo).mMapDescSize)};
+    unsafe {PageFrameAllocator::ReadEFIMemoryMap((*bootInfo).mMap, (*bootInfo).mMapSize, (*bootInfo).mMapDescSize)};
 
     // user INFO code:
     BasicRenderer::Clear(0x000000u32); // clean screen
@@ -62,24 +62,14 @@ extern "C" fn _start(bootInfo:*mut BootInfo) {
     Next();
     Print(r"RAM_INFO:");
     Next();
-    Print(r"mMapSize: ");
-    Print(&Rstr::usize_to_str(unsafe {(*bootInfo).mMapSize}));
-    Next();
-    Print(r"mMapDescSize: ");
-    Print(&Rstr::usize_to_str(unsafe {(*bootInfo).mMapDescSize}));
-    Next();
-    unsafe {PageFrameAllocator::ReadEFIMemoryMap((*bootInfo).mMap, (*bootInfo).mMapSize, (*bootInfo).mMapDescSize)};
-    Print(r"FreeRAM: ");
+    Print(r"freeMemory: ");
     Print(&Rstr::usize_to_str(PageFrameAllocator::GetFreeRAM()));
-    Print(r" Bits");
     Next();
-    Print(r"UsedRAM: ");
+    Print(r"usedMemory: ");
     Print(&Rstr::usize_to_str(PageFrameAllocator::GetUsedRAM()));
-    Print(r" Bits");
     Next();
-    Print(r"ReservedRAM: ");
+    Print(r"reservedMemory: ");
     Print(&Rstr::usize_to_str(PageFrameAllocator::GetReservedRAM()));
-    Print(r" Bits");
     Next();
     loop {
 

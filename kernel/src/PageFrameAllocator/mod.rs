@@ -28,7 +28,7 @@ pub unsafe fn ReadEFIMemoryMap(mMap: *mut EfiMemory::EFI_MEMORY_DESCRIPTOR, mMap
     let mMapEntries = mMapSize / mMapDescSize;
     let mut current = 0;
     while current < mMapEntries {
-        let desc = unsafe { &*mMap.add(current * mMapDescSize)};
+        let desc = &*EfiMemory::GetMemoryDesc(mMap, current , mMapDescSize);
         if desc.type_ == 7 { // type 7 is EfiConventionalMemory
             if desc.num_pages * 4096 > largsetFreeMemSegSize {
                 largsetFreeMemSeg = desc.phys_addr;
@@ -48,10 +48,11 @@ pub unsafe fn ReadEFIMemoryMap(mMap: *mut EfiMemory::EFI_MEMORY_DESCRIPTOR, mMap
     // reserve pages of unusable/reserved memory
     current = 0;
     while current < mMapEntries {
-        let desc = unsafe { &*mMap.add(current * mMapDescSize)};
+        let desc = &*EfiMemory::GetMemoryDesc(mMap, current , mMapDescSize);
         if desc.type_ != 7 { // not EfiConventionalMemory
             ReservePages(desc.phys_addr , desc.num_pages);
         }
+        current += 1;
     }
 }
 

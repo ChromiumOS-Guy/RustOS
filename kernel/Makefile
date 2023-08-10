@@ -4,10 +4,12 @@ GNUEFI = ../gnu-efi
 OVMFDIR = ../OVMFbin
 LDS = kernel.ld
 RC = rustc
+CC = gcc
 ASMC = nasm
 LD = ld
 
-RCFLAGS = --emit=obj --crate-type=lib -C default-linker-libraries=no -C prefer-dynamic=no 
+RCFLAGS = --emit=obj --crate-type=lib -C default-linker-libraries=no -C prefer-dynamic=no
+CFLAGS = -ffreestanding -fshort-wchar -mno-red-zone -fno-exceptions -fpermissive
 ASMFLAGS = 
 LDFLAGS = -T $(LDS) -static -Bsymbolic -nostdlib -fstack-protector -shared
 
@@ -18,9 +20,11 @@ BOOTEFI := $(GNUEFI)/x86_64/bootloader/main.efi
 
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
-SRC = $(call rwildcard,$(SRCDIR),*.rs)  
+RSRC = $(call rwildcard,$(SRCDIR),*.rs)
+CSRC = $(call rwildcard,$(SRCDIR),*.cpp)   
 ASMSRC = $(call rwildcard,$(SRCDIR),*.asm)  
-OBJS = $(patsubst $(SRCDIR)/%.rs, $(OBJDIR)/%.o, $(SRC))
+OBJS = $(patsubst $(SRCDIR)/%.rs, $(OBJDIR)/%.o, $(RSRC))
+OBJS += $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(CSRC))
 OBJS += $(patsubst $(SRCDIR)/%.asm, $(OBJDIR)/%_asm.o, $(ASMSRC))
 DIRS = $(wildcard $(SRCDIR)/*)
 
@@ -31,12 +35,17 @@ cleanlib:
 kernel: $(OBJS) link
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.rs
-	@ echo !==== COMPILING $^
+	@ echo !==== COMPILING-RUST $^
 	@ mkdir -p $(@D)
 	$(RC) $^ -o $@ $(RCFLAGS)
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	@ echo !==== COMPILING-CPP $^
+	@ mkdir -p $(@D)
+	$(CC) $(CFLAGS) -c $^ -o $@
 	
 $(OBJDIR)/%_asm.o: $(SRCDIR)/%.asm
-	@ echo !==== COMPILING $^
+	@ echo !==== COMPILING-ASM $^
 	@ mkdir -p $(@D)
 	$(ASMC) $(ASMFLAGS) $^ -f elf64 -o $@
 	 

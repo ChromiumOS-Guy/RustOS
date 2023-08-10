@@ -9,6 +9,7 @@
     unused_mut
 )]
 
+#[repr(C)]
 pub struct EFI_MEMORY_DESCRIPTOR {
     // EfiMemory Decriptor of Memory Entries
     pub r#type_: std::ffi::c_uint,
@@ -17,6 +18,7 @@ pub struct EFI_MEMORY_DESCRIPTOR {
     pub num_pages: usize,
     pub attribs: std::ffi::c_ulonglong,
 }
+
 
 pub const EFI_MEMORY_TYPE_STRINGS: [&str; 14] = [
     // EfiMemory Types
@@ -37,6 +39,11 @@ pub const EFI_MEMORY_TYPE_STRINGS: [&str; 14] = [
 ];
 
 // EfiMemory
+
+extern "C" {
+    pub fn GetMemoryDesc(mMap: *mut EFI_MEMORY_DESCRIPTOR, current: usize, mMapDescSize: usize) -> *mut EFI_MEMORY_DESCRIPTOR;
+}
+
 pub fn get_memory_size( // gets stuck in for loop
     // gets total size of memory
     mMap: *mut EFI_MEMORY_DESCRIPTOR,
@@ -46,14 +53,16 @@ pub fn get_memory_size( // gets stuck in for loop
     let mut memory_size = 0;
 
     let mut current : usize = 0;
-    while current < mMapEntries {
-        let desc = unsafe { &*mMap.add(current * mMapDescSize)};
+    unsafe {while current < mMapEntries {
+        let desc = &*GetMemoryDesc(mMap , current, mMapDescSize);
         memory_size += desc.num_pages * 4096;
         current += 1;
-    }
+    }}
 
     return memory_size;
 }
+
+
 
 #[inline]
 pub fn memset(start: *mut std::ffi::c_void, value: u8, num: u64) {
