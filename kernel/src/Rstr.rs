@@ -9,6 +9,7 @@
     unused_mut
 )]
 
+
 pub fn u64_to_str(mut value: u64) -> String {
     let mut int_to_string_output = String::with_capacity(128);
     while value / 10 > 0 {
@@ -61,17 +62,17 @@ pub fn u16_to_str(mut value: u16) -> String {
     return int_to_string_output;
 }
 
-pub fn u8_to_str(mut value: u8) -> String { // it all basically the same so i make notes only on this one
-    let mut int_to_string_output = String::with_capacity(128); // i make an int_to_string_output with capacity of 128 which in my opinion is more than enough
-    while value / 10 > 0 { // so basically if i have 100 and i modulo by 10 i get 0 if i do it again i get 0
+pub fn u8_to_str(mut value: u8) -> String { 
+    let mut int_to_string_output = String::with_capacity(128); 
+    while value / 10 > 0 { 
         let reminder = value % 10;
         value /= 10;
         int_to_string_output.push((reminder + '0' as u8) as char);
     }
 
-    let reminder = value % 10; // and if i do it again i get 1 assemble reverse and you get 100
+    let reminder = value % 10; 
     int_to_string_output.push((reminder + '0' as u8) as char);
-    return int_to_string_output; // int_to_string_output.chars().rev().collect() makes a memory leak for now numbers are reversed deal with it.
+    return int_to_string_output;
 }
 
 fn lazy_conversion(value: u64) -> u8 {

@@ -44,7 +44,7 @@ pub struct Point {
     pub Y: u32,
 }
 
-pub static mut CursorPosition : Point = Point { X: 0u32, Y: 0u32 };
+static mut CursorPosition : Point = Point { X: 0u32, Y: 0u32 };
 static mut framebuffer: *mut Framebuffer = std::ptr::null_mut(); // framebuffer need not be mutable after BasicRenderer fn Initializes it
 static mut psf1_font: *mut PSF1_FONT = std::ptr::null_mut(); // psf1_font need not be mutable after BasicRenderer fn Initializes it
 static mut colour : u32 = 0xFFFFFFu32;

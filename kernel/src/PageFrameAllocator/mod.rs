@@ -44,7 +44,7 @@ pub unsafe fn ReadEFIMemoryMap(mMap: *mut EfiMemory::EFI_MEMORY_DESCRIPTOR, mMap
     // Initialize bitmap
     PageBitmap = Bitmap::Bitmap::new(bitmapSize, largsetFreeMemSeg);
     // lock pages where bitmap is (which is largsetFreeMemSeg)
-    LockPages(largsetFreeMemSeg, PageBitmap.size / 4096 + 1); // lockPages gets stuck (current suspicion is that get_memory_size fn isn't returning true size of memory)
+    LockPages(largsetFreeMemSeg, PageBitmap.size / 4096 + 1);
     // reserve pages of unusable/reserved memory
     current = 0;
     while current < mMapEntries {
@@ -92,6 +92,21 @@ unsafe fn ReservePages(address: *mut std::ffi::c_void, pageCount: usize) {
 }
 
 // public
+
+pub unsafe fn RequestPage() -> *mut std::ffi::c_void {
+    let mut index : usize = 0;
+    while index < PageBitmap.size * 8{
+        if PageBitmap.get(index) == false {
+            LockPage((index * 4096usize) as *mut std::ffi::c_void);
+            return (index * 4096usize) as *mut std::ffi::c_void;
+        } else {
+            index += 1;
+        }
+    }
+
+    return std::ptr::null_mut(); // Page Frame Swap into file when Drive drivers be a thing. 
+
+}
 
 pub unsafe fn FreePage(address: *mut std::ffi::c_void) {
     let index = (address as usize) / 4096;
