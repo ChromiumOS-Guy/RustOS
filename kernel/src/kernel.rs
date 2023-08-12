@@ -60,31 +60,38 @@ extern "C" fn _start(bootInfo:*mut BootInfo) {
     Print(r"2. IDT I need it so I can do shit with PIT when I make IO lib");
     Next();
     Next();
-    Print("Testing Rstr should be 100:   ");
-    Print(&Rstr::u8_to_str(100u8));
-    Next();
     Print(r"RAM_INFO:");
     Next();
-    Print(r"freeMemory: ");
+    Print(r"FreeRAM: ");
     Print(&Rstr::usize_to_str(PageFrameAllocator::GetFreeRAM()));
     Next();
-    Print(r"usedMemory: ");
+    Print(r"UsedRAM: ");
     Print(&Rstr::usize_to_str(PageFrameAllocator::GetUsedRAM()));
     Next();
-    Print(r"reservedMemory: ");
+    Print(r"ReservedRAM: ");
     Print(&Rstr::usize_to_str(PageFrameAllocator::GetReservedRAM()));
     Next();
     Print("Requesting 20 Pages in Memory: ");
     for i in 0..20{
         Next();
         let address : *mut std::ffi::c_void = unsafe {PageFrameAllocator::RequestPage()};
-        Print(&Rstr::u64_to_str(address as u64));
+        Print("0x");
+        Print(&Rstr::u64hex_to_str(address as u64));
 
 
     }
     Next();
-    Print("usedMemory: ");
+    Print(r"RAM_INFO After Page Requests:");
+    Next();
+    Print(r"FreeRAM: ");
+    Print(&Rstr::usize_to_str(PageFrameAllocator::GetFreeRAM()));
+    Next();
+    Print(r"UsedRAM: ");
     Print(&Rstr::usize_to_str(PageFrameAllocator::GetUsedRAM()));
+    Next();
+    Print(r"ReservedRAM: ");
+    Print(&Rstr::usize_to_str(PageFrameAllocator::GetReservedRAM()));
+    Next();
     loop {
 
     }
