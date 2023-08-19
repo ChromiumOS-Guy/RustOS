@@ -16,7 +16,7 @@ use std::ptr;
 pub struct Framebuffer {
     // framebuffer has resolution data and GOP addresses
     pub BaseAddress: *mut std::ffi::c_void,
-    pub BufferSize: std::ffi::c_ulonglong,
+    pub BufferSize: usize,
     pub Width: std::ffi::c_uint,
     pub Height: std::ffi::c_uint,
     pub PixelsPerScanLine: std::ffi::c_uint,
